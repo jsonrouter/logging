@@ -14,6 +14,7 @@ import 	(
 	//
 	"golang.org/x/net/context"
 	"cloud.google.com/go/logging"
+	"cloud.google.com/go/errorreporting"
 )
 
 func fn() string {
@@ -41,10 +42,18 @@ func NewClient(googleProjectName string) *LogClient {
 	ctx := context.Background()
 
 	client, err := logging.NewClient(ctx, googleProjectName); if err != nil { panic(err) }
+	erclient, err := errorreporting.NewClient(ctx, googleProjectName, errorreporting.Config{
+		ServiceName:    "myservice",
+		ServiceVersion: "v1.0",
+	})
+	if err != nil {
+
+	}
 
 	return &LogClient{
 		ctx,
 		client,
+		erclient,
 		map[string]*Logger{},
 		sync.RWMutex{},
 	}
@@ -53,6 +62,7 @@ func NewClient(googleProjectName string) *LogClient {
 type LogClient struct {
 	ctx context.Context
 	client *logging.Client
+	erclient *errorreporting.Client
 	loggers map[string]*Logger
 	sync.RWMutex
 }
@@ -86,6 +96,7 @@ func (lc *LogClient) NewLogger(silent bool, logFuncNames ...string) *Logger {
 			lc.ctx,
 			silent,
 			lc.client,
+			lc.erclient,
 			lc.client.Logger(logFuncName),
 		}
 	}
@@ -97,6 +108,7 @@ type Logger struct {
 	ctx context.Context
 	silent bool
 	client *logging.Client
+	erclient *errorreporting.Client
 	logger *logging.Logger
 }
 
@@ -112,10 +124,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	n := 64
 	l := len(fn)
 	if l > n { fn = fn[l-n:] }
-
+    
 	payload := fn + ": " + fmt.Sprintf("%v", msg)
 
-	err := lg.logger.LogSync(lg.ctx, logging.Entry{
+	/*err := lg.logger.LogSync(lg.ctx, logging.Entry{
 		Payload:      payload,
 		Severity:     severity,
 	})
@@ -123,6 +135,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	if err != nil {
 		color.Yellow("WARNING!!! FAILED TO SEND LOG: " + err.Error())
 	}
+*/
+	lg.erclient.Report(errorreporting.Entry{
+		Error: errors.New(payload),
+	})
 
 	// silent mode stops default logging to stdout
 	if !lg.silent {

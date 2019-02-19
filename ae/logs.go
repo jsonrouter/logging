@@ -13,6 +13,7 @@ import 	(
 		"golang.org/x/net/context"
 		"cloud.google.com/go/logging"
 		"google.golang.org/appengine/log"
+		"cloud.google.com/go/errorreporting"
 	)
 
 func fn() string {
@@ -38,10 +39,19 @@ func fn() string {
 func NewClient(googleProjectName string, ctx context.Context) *LogClient {
 
 	client, err := logging.NewClient(ctx, googleProjectName); if err != nil { panic(err) }
+	erclient, err := errorreporting.NewClient(ctx, googleProjectName, errorreporting.Config{
+		ServiceName:    "myservice",
+		ServiceVersion: "v1.0",
+	})
+	if err != nil {
+
+	}
+	
 
 	return &LogClient{
 		ctx,
 		client,
+		erclient,
 		map[string]*Logger{},
 		sync.RWMutex{},
 	}
@@ -50,6 +60,7 @@ func NewClient(googleProjectName string, ctx context.Context) *LogClient {
 type LogClient struct {
 	ctx context.Context
 	client *logging.Client
+	erclient *errorreporting.Client
 	loggers map[string]*Logger
 	sync.RWMutex
 }
@@ -125,6 +136,7 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 		case logging.Error:
 
 			log.Errorf(lg.ctx, payload)
+
 
 		case logging.Debug:
 
