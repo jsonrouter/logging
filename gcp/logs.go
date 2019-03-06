@@ -14,6 +14,7 @@ import 	(
 	//
 	"golang.org/x/net/context"
 	"cloud.google.com/go/logging"
+	"cloud.google.com/go/errorreporting"
 )
 
 func fn() string {
@@ -35,16 +36,24 @@ func fn() string {
 	return strings.Join(names, "/")
 }
 
-// creates a new logging client
+// NewClient creates a new logging client
 func NewClient(googleProjectName string) *LogClient {
 
 	ctx := context.Background()
 
 	client, err := logging.NewClient(ctx, googleProjectName); if err != nil { panic(err) }
+	erclient, err := errorreporting.NewClient(ctx, googleProjectName, errorreporting.Config{
+		ServiceName:    "myservice",
+		ServiceVersion: "v1.0",
+	})
+	if err != nil {
+
+	}
 
 	return &LogClient{
 		ctx,
 		client,
+		erclient,
 		map[string]*Logger{},
 		sync.RWMutex{},
 	}
@@ -53,11 +62,12 @@ func NewClient(googleProjectName string) *LogClient {
 type LogClient struct {
 	ctx context.Context
 	client *logging.Client
+	erclient *errorreporting.Client
 	loggers map[string]*Logger
 	sync.RWMutex
 }
 
-// creates a new logger based on the input name
+// NewLogger creates a new logger based on the input name
 func (lc *LogClient) NewLogger(silent bool, logFuncNames ...string) *Logger {
 
 	var logFuncName string
@@ -86,6 +96,7 @@ func (lc *LogClient) NewLogger(silent bool, logFuncNames ...string) *Logger {
 			lc.ctx,
 			silent,
 			lc.client,
+			lc.erclient,
 			lc.client.Logger(logFuncName),
 		}
 	}
@@ -97,13 +108,14 @@ type Logger struct {
 	ctx context.Context
 	silent bool
 	client *logging.Client
+	erclient *errorreporting.Client
 	logger *logging.Logger
 }
 
 func (lg *Logger) Flush() {
 }
 
-// creates and executes a logging entry
+// Log creates and executes a logging entry
 func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 	fn := fn()
@@ -112,10 +124,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	n := 64
 	l := len(fn)
 	if l > n { fn = fn[l-n:] }
-
+    
 	payload := fn + ": " + fmt.Sprintf("%v", msg)
 
-	err := lg.logger.LogSync(lg.ctx, logging.Entry{
+	/*err := lg.logger.LogSync(lg.ctx, logging.Entry{
 		Payload:      payload,
 		Severity:     severity,
 	})
@@ -123,6 +135,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	if err != nil {
 		color.Yellow("WARNING!!! FAILED TO SEND LOG: " + err.Error())
 	}
+*/
+	lg.erclient.Report(errorreporting.Entry{
+		Error: errors.New(payload),
+	})
 
 	// silent mode stops default logging to stdout
 	if !lg.silent {
@@ -139,10 +155,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 }
 
-// Debug log
+// Debug creates a debug log
 func (lg *Logger) Debug(msg interface{}) { lg.Log(msg, logging.Debug) }
 
-// Debug log with formatting
+// Debugf creates a debug log with formatting
 func (lg *Logger) Debugf(s string, args ...interface{}) {
 
 	msg := fmt.Sprintf(s, args...)
@@ -151,7 +167,7 @@ func (lg *Logger) Debugf(s string, args ...interface{}) {
 
 }
 
-// Error log
+// NewError creates an error log
 func (lg *Logger) NewError(msg string) error {
 
 	lg.Log(msg, logging.Error)
@@ -159,7 +175,7 @@ func (lg *Logger) NewError(msg string) error {
 	return errors.New(msg)
 }
 
-// Error log with formatting
+// NewErrorf creates an error log with formatting
 func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 
 	msg := fmt.Sprintf(s, args...)
@@ -169,7 +185,7 @@ func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 	return errors.New(msg)
 }
 
-// error log
+// Error creates an error log
 func (lg *Logger) Error(err error) bool {
 
 	if err != nil { lg.Log(err, logging.Error) }
@@ -177,7 +193,7 @@ func (lg *Logger) Error(err error) bool {
 	return err != nil
 }
 
-// critical log
+// Panic creates a critical log
 func (lg *Logger) Panic(msg interface{}) {
 
 	if msg == nil { return }
@@ -189,7 +205,7 @@ func (lg *Logger) Panic(msg interface{}) {
 	panic(msg)
 }
 
-// critical log
+// Fatal creates a critical log
 func (lg *Logger) Fatal(msg interface{}) {
 
 	if msg == nil { return }
@@ -203,7 +219,7 @@ func (lg *Logger) Fatal(msg interface{}) {
 	os.Exit(1)
 }
 
-// type assertion fail log
+// Reflect type assertion fail log
 func (lg *Logger) Reflect(e interface{}) {
 
 	msg := "REFLECT VALUE IS NIL"
@@ -213,7 +229,7 @@ func (lg *Logger) Reflect(e interface{}) {
 	lg.Log(msg, logging.Error)
 }
 
-// debug json output log
+// DebugJSON creates a debug log in JSON format
 func (lg *Logger) DebugJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }
@@ -221,7 +237,7 @@ func (lg *Logger) DebugJSON(i interface{}) {
 	lg.Log(string(b), logging.Debug)
 }
 
-// error json output log
+// ErrorJSON creates an error log in JSON format
 func (lg *Logger) ErrorJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }

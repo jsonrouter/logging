@@ -13,6 +13,7 @@ import 	(
 		"golang.org/x/net/context"
 		"cloud.google.com/go/logging"
 		"google.golang.org/appengine/log"
+		"cloud.google.com/go/errorreporting"
 	)
 
 func fn() string {
@@ -34,14 +35,23 @@ func fn() string {
 	return strings.Join(names, "/")
 }
 
-// creates a new logging client
+// NewClient creates a new logging client
 func NewClient(googleProjectName string, ctx context.Context) *LogClient {
 
 	client, err := logging.NewClient(ctx, googleProjectName); if err != nil { panic(err) }
+	erclient, err := errorreporting.NewClient(ctx, googleProjectName, errorreporting.Config{
+		ServiceName:    "myservice",
+		ServiceVersion: "v1.0",
+	})
+	if err != nil {
+
+	}
+	
 
 	return &LogClient{
 		ctx,
 		client,
+		erclient,
 		map[string]*Logger{},
 		sync.RWMutex{},
 	}
@@ -50,6 +60,7 @@ func NewClient(googleProjectName string, ctx context.Context) *LogClient {
 type LogClient struct {
 	ctx context.Context
 	client *logging.Client
+	erclient *errorreporting.Client
 	loggers map[string]*Logger
 	sync.RWMutex
 }
@@ -58,7 +69,7 @@ func (lc *LogClient) Close() {
 	lc.client.Close()
 }
 
-// creates a new logger based on the input name
+// NewLogger creates a new logger based on the input name
 func (lc *LogClient) NewLogger(logFuncNames ...string) *Logger {
 
 	var logFuncName string
@@ -103,7 +114,7 @@ func (lg *Logger) Flush() {
 	lg.logger.Flush()
 }
 
-// creates and executes a logging entry
+// Log creates and executes a logging entry
 func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 	fn := fn()
@@ -126,6 +137,7 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 			log.Errorf(lg.ctx, payload)
 
+
 		case logging.Debug:
 
 			log.Debugf(lg.ctx, payload)
@@ -134,10 +146,10 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 }
 
-// Debug log
+// Debug creates a debug log
 func (lg *Logger) Debug(msg interface{}) { lg.Log(msg, logging.Debug) }
 
-// Debug log with formatting
+// Debugf creates a debug log with formatting
 func (lg *Logger) Debugf(s string, args ...interface{}) {
 
 	msg := fmt.Sprintf(s, args...)
@@ -146,7 +158,7 @@ func (lg *Logger) Debugf(s string, args ...interface{}) {
 
 }
 
-// Error log
+// NewError creates an error log
 func (lg *Logger) NewError(msg string) error {
 
 	lg.Log(msg, logging.Error)
@@ -154,7 +166,7 @@ func (lg *Logger) NewError(msg string) error {
 	return errors.New(msg)
 }
 
-// Error log with formatting
+// NewErrorf creates an error log with formatting
 func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 
 	msg := fmt.Sprintf(s, args...)
@@ -164,7 +176,7 @@ func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 	return errors.New(msg)
 }
 
-// error log
+// Error creates an error log from an error
 func (lg *Logger) Error(err error) bool {
 
 	if err != nil { lg.Log(err, logging.Error) }
@@ -172,7 +184,7 @@ func (lg *Logger) Error(err error) bool {
 	return err != nil
 }
 
-// critical log
+// Panic creates a critical log
 func (lg *Logger) Panic(msg interface{}) {
 
 	if msg == nil { return }
@@ -184,7 +196,7 @@ func (lg *Logger) Panic(msg interface{}) {
 	panic(msg)
 }
 
-// critical log
+// Fatal creates critical log
 func (lg *Logger) Fatal(msg interface{}) {
 
 	if msg == nil { return }
@@ -196,7 +208,7 @@ func (lg *Logger) Fatal(msg interface{}) {
 	panic(msg)
 }
 
-// type assertion fail log
+// Reflect creates a type assertion fail log
 func (lg *Logger) Reflect(e interface{}) {
 
 	msg := "REFLECT VALUE IS NIL"
@@ -206,7 +218,7 @@ func (lg *Logger) Reflect(e interface{}) {
 	lg.Log(msg, logging.Error)
 }
 
-// debug json output log
+// DebugJSON creates a debug log in json format 
 func (lg *Logger) DebugJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }
@@ -214,7 +226,7 @@ func (lg *Logger) DebugJSON(i interface{}) {
 	lg.Log(string(b), logging.Debug)
 }
 
-// error json output log
+// ErrorJSON creates an error log in json format
 func (lg *Logger) ErrorJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }

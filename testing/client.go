@@ -31,7 +31,7 @@ func fn() string {
 	return strings.Join(names, "/")
 }
 
-// creates a new logging client
+// NewClient creates a new logging client
 func NewClient() *LogClient {
 
 	return &LogClient{
@@ -48,7 +48,7 @@ type LogClient struct {
 func (lg *Logger) Flush() {
 }
 
-// creates a new logger based on the input name
+// NewLogger creates a new logger based on the input name
 func (lc *LogClient) NewLogger(logFuncNames ...string) *Logger {
 
 	var logFuncName string
@@ -75,7 +75,7 @@ func (lc *LogClient) NewLogger(logFuncNames ...string) *Logger {
 type Logger struct {
 }
 
-// creates and executes a logging entry
+// Log creates and executes a logging entry
 func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 
 	fn := fn()
@@ -102,26 +102,26 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	color.Yellow(payload)
 }
 
-// Debug log
+// Debug creates a debug log
 func (lg *Logger) Debug(msg interface{}) {
 	lg.Log(msg, logging.Debug)
 }
 
-// Debug log with formatting
+// Debugf creates a debug log with formatting
 func (lg *Logger) Debugf(s string, args ...interface{}) {
 
 	msg := fmt.Sprintf(s, args...)
 	lg.Log(msg, logging.Debug)
 }
 
-// Error log
+// NewError creates an error log
 func (lg *Logger) NewError(msg string) error {
 
 	lg.Log(msg, logging.Error)
 	return errors.New(msg)
 }
 
-// Error log with formatting
+// NewErrorf creates an error log with formatting
 func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 
 	msg := fmt.Sprintf(s, args...)
@@ -131,7 +131,7 @@ func (lg *Logger) NewErrorf(s string, args ...interface{}) error {
 	return errors.New(msg)
 }
 
-// Error log
+// Error creates an error log
 func (lg *Logger) Error(err error) bool {
 
 	if err != nil { lg.Log(err, logging.Error) }
@@ -139,7 +139,7 @@ func (lg *Logger) Error(err error) bool {
 	return err != nil
 }
 
-// Critical log
+// Panic creates a critical log
 func (lg *Logger) Panic(msg interface{}) {
 
 	if msg == nil { return }
@@ -149,7 +149,7 @@ func (lg *Logger) Panic(msg interface{}) {
 	panic(msg)
 }
 
-// Critical log
+// Fatal creates a critical log
 func (lg *Logger) Fatal(msg interface{}) {
 
 	if msg == nil { return }
@@ -161,7 +161,7 @@ func (lg *Logger) Fatal(msg interface{}) {
 	panic(msg)
 }
 
-// type assertion fail log
+// Reflect creates a type assertion fail log
 func (lg *Logger) Reflect(e interface{}) {
 
 	msg := "REFLECT VALUE IS NIL"
@@ -170,7 +170,7 @@ func (lg *Logger) Reflect(e interface{}) {
 	lg.Log(msg, logging.Error)
 }
 
-// debug json output log
+// DebugJSON creates a debug log in JSON format
 func (lg *Logger) DebugJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }
@@ -178,7 +178,7 @@ func (lg *Logger) DebugJSON(i interface{}) {
 	lg.Log(string(b), logging.Debug)
 }
 
-// error json output log
+// ErrorJSON creates an error log in JSON format
 func (lg *Logger) ErrorJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }
