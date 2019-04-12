@@ -45,7 +45,8 @@ type LogClient struct {
 	sync.RWMutex
 }
 
-func (lg *Logger) Flush() {
+func (lg *Logger) Close() error {
+	return nil
 }
 
 // NewLogger creates a new logger based on the input name
