@@ -124,22 +124,22 @@ func (lg *Logger) Log(msg interface{}, severity logging.Severity) {
 	n := 64
 	l := len(fn)
 	if l > n { fn = fn[l-n:] }
-    
+
 	payload := fn + ": " + fmt.Sprintf("%v", msg)
 
-	/*err := lg.logger.LogSync(lg.ctx, logging.Entry{
-		Payload:      payload,
-		Severity:     severity,
-	})
-
-	if err != nil {
+	if err := lg.logger.LogSync(
+		lg.ctx, logging.Entry{
+			Payload:      payload,
+			Severity:     severity,
+		},
+	); err != nil {
 		color.Yellow("WARNING!!! FAILED TO SEND LOG: " + err.Error())
 	}
-*/
+/*
 	lg.erclient.Report(errorreporting.Entry{
 		Error: errors.New(payload),
 	})
-
+*/
 	// silent mode stops default logging to stdout
 	if !lg.silent {
 		if severity == logging.Error {
