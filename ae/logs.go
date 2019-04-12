@@ -46,7 +46,7 @@ func NewClient(googleProjectName string, ctx context.Context) *LogClient {
 	if err != nil {
 
 	}
-	
+
 
 	return &LogClient{
 		ctx,
@@ -65,8 +65,8 @@ type LogClient struct {
 	sync.RWMutex
 }
 
-func (lc *LogClient) Close() {
-	lc.client.Close()
+func (lc *LogClient) Close() error {
+	return lc.client.Close()
 }
 
 // NewLogger creates a new logger based on the input name
@@ -108,10 +108,6 @@ type Logger struct {
 	ctx context.Context
 	client *logging.Client
 	logger *logging.Logger
-}
-
-func (lg *Logger) Flush() {
-	lg.logger.Flush()
 }
 
 // Log creates and executes a logging entry
@@ -218,7 +214,7 @@ func (lg *Logger) Reflect(e interface{}) {
 	lg.Log(msg, logging.Error)
 }
 
-// DebugJSON creates a debug log in json format 
+// DebugJSON creates a debug log in json format
 func (lg *Logger) DebugJSON(i interface{}) {
 
 	b, err := json.Marshal(i); if err != nil { lg.Error(err); return }

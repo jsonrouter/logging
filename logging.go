@@ -1,7 +1,7 @@
 package logging
 
 type Logger interface {
-	Flush()
+	Close() error
 	Debug(interface{})
 	Debugf(string, ...interface{})
 	NewError(string) error
