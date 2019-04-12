@@ -112,8 +112,8 @@ type Logger struct {
 	logger *logging.Logger
 }
 
-func (lc *LogClient) Close() error {
-	return lc.client.Close()
+func (lg *Logger) Close() error {
+	return lg.client.Close()
 }
 
 // Log creates and executes a logging entry
